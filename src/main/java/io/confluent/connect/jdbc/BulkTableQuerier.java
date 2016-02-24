@@ -39,18 +39,18 @@ public class BulkTableQuerier extends TableQuerier {
   }
 
   @Override
-  protected void createPreparedStatement(Connection db) throws SQLException {
+  protected String buildQueryString(Connection db) throws SQLException {
     switch (mode) {
       case TABLE:
         String quoteString = JdbcUtils.getIdentifierQuoteString(db);
         String queryString = "SELECT * FROM " + JdbcUtils.quoteString(name, quoteString);
         log.debug("{} prepared SQL query: {}", this, queryString);
-        stmt = db.prepareStatement(queryString);
-        break;
+        return queryString;
       case QUERY:
         log.debug("{} prepared SQL query: {}", this, query);
-        stmt = db.prepareStatement(query);
-        break;
+        return query;
+      default:
+        throw new ConnectException("Unexpected query mode: " + mode);
     }
   }
 

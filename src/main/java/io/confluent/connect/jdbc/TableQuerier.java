@@ -56,23 +56,34 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
     return lastUpdate;
   }
 
-  public PreparedStatement getOrCreatePreparedStatement(Connection db) throws SQLException {
+  public PreparedStatement getOrCreatePreparedStatement(Connection db, int batchMaxRows) throws SQLException {
     if (stmt != null) {
       return stmt;
     }
-    createPreparedStatement(db);
+    String queryString = buildQueryString(db);
+    switch (db.getMetaData().getDatabaseProductName().toLowerCase()) {
+      case "postgresql":
+        if (db.getAutoCommit()) {
+          db.setAutoCommit(false);
+        }
+        stmt = db.prepareStatement(queryString);
+        stmt.setFetchSize(batchMaxRows);
+        break;
+      default:
+        stmt = db.prepareStatement(queryString);
+    }
     return stmt;
   }
 
-  protected abstract void createPreparedStatement(Connection db) throws SQLException;
+  protected abstract String buildQueryString(Connection db) throws SQLException;
 
   public boolean querying() {
     return resultSet != null;
   }
 
-  public void maybeStartQuery(Connection db) throws SQLException {
+  public void maybeStartQuery(Connection db, int batchMaxRows) throws SQLException {
     if (resultSet == null) {
-      stmt = getOrCreatePreparedStatement(db);
+      stmt = getOrCreatePreparedStatement(db, batchMaxRows);
       resultSet = executeQuery();
       schema = DataConverter.convertSchema(name, resultSet.getMetaData());
     }
